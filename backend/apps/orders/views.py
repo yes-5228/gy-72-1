@@ -1,7 +1,9 @@
-from rest_framework import filters, viewsets
+from rest_framework import filters, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
 
 from .models import Order
-from .serializers import OrderSerializer
+from .serializers import OrderCancelSerializer, OrderSerializer
 
 
 class OrderViewSet(viewsets.ModelViewSet):
@@ -17,3 +19,17 @@ class OrderViewSet(viewsets.ModelViewSet):
         if status_value:
             queryset = queryset.filter(status=status_value)
         return queryset
+
+    @action(detail=True, methods=["post"], serializer_class=OrderCancelSerializer)
+    def cancel(self, request, pk=None):
+        order = self.get_object()
+        serializer = self.get_serializer(data=request.data, context={"order": order})
+        serializer.is_valid(raise_exception=True)
+        try:
+            serializer.save()
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"status": "cancelled", "message": "订单已取消，库存已恢复，配送任务已关闭"},
+            status=status.HTTP_200_OK,
+        )

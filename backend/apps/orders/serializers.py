@@ -18,6 +18,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True)
+    can_cancel = serializers.SerializerMethodField()
+    cancel_reason = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -32,10 +34,20 @@ class OrderSerializer(serializers.ModelSerializer):
             "status",
             "total_amount",
             "items",
+            "can_cancel",
+            "cancel_reason",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["total_amount", "created_at", "updated_at"]
+        read_only_fields = ["total_amount", "created_at", "updated_at", "can_cancel", "cancel_reason"]
+
+    def get_can_cancel(self, obj):
+        can_cancel, _ = obj.can_cancel()
+        return can_cancel
+
+    def get_cancel_reason(self, obj):
+        _, reason = obj.can_cancel()
+        return reason
 
     def validate_items(self, value):
         if not value:
@@ -75,3 +87,17 @@ class OrderSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         validated_data.pop("items", None)
         return super().update(instance, validated_data)
+
+
+class OrderCancelSerializer(serializers.Serializer):
+    def validate(self, attrs):
+        order = self.context["order"]
+        can_cancel, message = order.can_cancel()
+        if not can_cancel:
+            raise serializers.ValidationError(message)
+        return attrs
+
+    def save(self):
+        order = self.context["order"]
+        order.cancel()
+        return order
