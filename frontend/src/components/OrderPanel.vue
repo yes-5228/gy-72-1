@@ -62,6 +62,21 @@
 import { computed, reactive, ref } from 'vue'
 import { createOrder } from '../api/canteen'
 
+const STUDENT_INFO_KEY = 'canteen_student_info'
+
+function loadSavedStudentInfo() {
+  try {
+    const saved = localStorage.getItem(STUDENT_INFO_KEY)
+    return saved ? JSON.parse(saved) : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveStudentInfo(info) {
+  localStorage.setItem(STUDENT_INFO_KEY, JSON.stringify(info))
+}
+
 const props = defineProps({
   cart: {
     type: Array,
@@ -73,12 +88,13 @@ const emit = defineEmits(['created', 'increase', 'decrease'])
 const submitting = ref(false)
 const message = ref('')
 
+const savedInfo = loadSavedStudentInfo()
 const plusHours = new Date(Date.now() + 2 * 60 * 60 * 1000)
 const form = reactive({
-  student_name: '',
-  student_no: '',
-  phone: '',
-  delivery_address: '',
+  student_name: savedInfo.student_name || '',
+  student_no: savedInfo.student_no || '',
+  phone: savedInfo.phone || '',
+  delivery_address: savedInfo.delivery_address || '',
   pickup_time: plusHours.toISOString().slice(0, 16),
   note: '',
 })
@@ -91,6 +107,13 @@ async function submitOrder() {
   submitting.value = true
   message.value = ''
   try {
+    saveStudentInfo({
+      student_name: form.student_name,
+      student_no: form.student_no,
+      phone: form.phone,
+      delivery_address: form.delivery_address,
+    })
+    localStorage.setItem('canteen_current_student_no', form.student_no)
     const payload = {
       ...form,
       pickup_time: new Date(form.pickup_time).toISOString(),

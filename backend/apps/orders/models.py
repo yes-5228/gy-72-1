@@ -50,11 +50,22 @@ class Order(models.Model):
                 return False, "订单已取餐或已送达，无法取消"
         return True, "可以取消"
 
+    def check_operation_permission(self, operator_student_no=None, is_admin=False):
+        if is_admin:
+            return True, None
+        if operator_student_no and operator_student_no.strip() == self.student_no.strip():
+            return True, None
+        return False, "只有订单本人或管理员可以取消该订单"
+
     @transaction.atomic
-    def cancel(self):
+    def cancel(self, operator_student_no=None, is_admin=False):
         can_cancel, message = self.can_cancel()
         if not can_cancel:
             raise ValueError(message)
+
+        has_perm, perm_message = self.check_operation_permission(operator_student_no, is_admin)
+        if not has_perm:
+            raise PermissionError(perm_message)
 
         for item in self.items.select_related("dish").all():
             dish = Dish.objects.select_for_update().get(id=item.dish.id)

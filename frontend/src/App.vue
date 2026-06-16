@@ -31,7 +31,8 @@
         <button class="ghost-button" type="button" @click="reloadKey++">刷新数据</button>
       </header>
 
-      <MenuPage v-if="currentPage === 'menu'" :reload-key="reloadKey" />
+      <MenuPage v-if="currentPage === 'menu'" :reload-key="reloadKey" @order-created="onOrderCreated" />
+      <OrdersPage v-else-if="currentPage === 'orders'" :reload-key="reloadKey" @order-cancelled="onOrderCancelled" />
       <DeliveryPage v-else-if="currentPage === 'delivery'" :reload-key="reloadKey" />
       <ReviewsPage v-else :reload-key="reloadKey" />
     </main>
@@ -42,6 +43,7 @@
 import { computed, ref } from 'vue'
 import DeliveryPage from './pages/DeliveryPage.vue'
 import MenuPage from './pages/MenuPage.vue'
+import OrdersPage from './pages/OrdersPage.vue'
 import ReviewsPage from './pages/ReviewsPage.vue'
 
 const currentPage = ref('menu')
@@ -49,9 +51,18 @@ const reloadKey = ref(0)
 
 const navItems = [
   { key: 'menu', label: '菜品订餐', icon: '🍱' },
+  { key: 'orders', label: '我的订单', icon: '📋' },
   { key: 'delivery', label: '配送管理', icon: '🚚' },
   { key: 'reviews', label: '评价反馈', icon: '★' },
 ]
 
 const pageTitle = computed(() => navItems.find((item) => item.key === currentPage.value)?.label)
+
+function onOrderCreated() {
+  reloadKey.value++
+}
+
+function onOrderCancelled() {
+  reloadKey.value++
+}
 </script>

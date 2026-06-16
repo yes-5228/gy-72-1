@@ -28,3 +28,11 @@ class DeliveryTask(models.Model):
 
     def __str__(self):
         return f"配送任务 #{self.order_id}"
+
+    def is_locked_by_cancellation(self):
+        return self.status == "failed" and self.order.status == "cancelled"
+
+    def can_change_status_to(self, new_status):
+        if self.is_locked_by_cancellation():
+            return False, "该订单已取消，配送任务已关闭，无法修改状态"
+        return True, None
