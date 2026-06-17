@@ -25,6 +25,9 @@ class OrderAdmin(admin.ModelAdmin):
     can_cancel_display.short_description = "可否取消"
 
     def cancel_selected_orders(self, request, queryset):
+        if not (request.user.is_staff or request.user.is_superuser):
+            self.message_user(request, "只有管理员可以批量取消订单。", level=messages.ERROR)
+            return
         success_count = 0
         fail_count = 0
         for order in queryset:

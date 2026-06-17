@@ -92,21 +92,12 @@ class OrderSerializer(serializers.ModelSerializer):
 class OrderCancelSerializer(serializers.Serializer):
     def validate(self, attrs):
         order = self.context["order"]
-        operator_student_no = self.context.get("operator_student_no")
-        is_admin = self.context.get("is_admin", False)
-
         can_cancel, message = order.can_cancel()
         if not can_cancel:
             raise serializers.ValidationError(message)
-
-        has_perm, perm_message = order.check_operation_permission(operator_student_no, is_admin)
-        if not has_perm:
-            raise serializers.ValidationError(perm_message)
         return attrs
 
     def save(self):
         order = self.context["order"]
-        operator_student_no = self.context.get("operator_student_no")
-        is_admin = self.context.get("is_admin", False)
-        order.cancel(operator_student_no=operator_student_no, is_admin=is_admin)
+        order.cancel()
         return order

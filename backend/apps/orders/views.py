@@ -1,5 +1,6 @@
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
 from .models import Order
@@ -23,22 +24,29 @@ class OrderViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(student_no=student_no)
         return queryset
 
+    @staticmethod
+    def _check_cancel_permission(request, order):
+        user = request.user
+        if user and (user.is_staff or user.is_superuser):
+            return True
+        operator_student_no = request.data.get("operator_student_no") or request.query_params.get("operator_student_no")
+        if operator_student_no and operator_student_no.strip() == order.student_no.strip():
+            return True
+        return False
+
     @action(detail=True, methods=["post"], serializer_class=OrderCancelSerializer)
     def cancel(self, request, pk=None):
         order = self.get_object()
-        operator_student_no = request.data.get("operator_student_no") or request.query_params.get("operator_student_no")
-        is_admin = str(request.data.get("is_admin") or request.query_params.get("is_admin") or "false").lower() in ("true", "1", "yes")
-        serializer = self.get_serializer(
-            data=request.data,
-            context={"order": order, "operator_student_no": operator_student_no, "is_admin": is_admin}
-        )
+
+        if not self._check_cancel_permission(request, order):
+            raise PermissionDenied("只有订单本人或管理员可以取消该订单")
+
+        serializer = self.get_serializer(data=request.data, context={"order": order})
         serializer.is_valid(raise_exception=True)
         try:
             serializer.save()
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        except PermissionError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_403_FORBIDDEN)
         return Response(
             {"status": "cancelled", "message": "订单已取消，库存已恢复，配送任务已关闭"},
             status=status.HTTP_200_OK,

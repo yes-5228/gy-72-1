@@ -7,6 +7,14 @@
           <span v-if="currentStudent">{{ orders.length }} 条订单</span>
         </div>
 
+        <div v-if="successMessage" class="toast toast-success">
+          ✅ {{ successMessage }}
+        </div>
+
+        <div v-if="errorMessage" class="toast toast-error">
+          ❌ {{ errorMessage }}
+        </div>
+
         <div v-if="!currentStudent" class="student-login">
           <label>
             请输入学号查看您的订单
@@ -73,7 +81,7 @@
 
 <script setup>
 import { onMounted, ref, watch } from 'vue'
-import { cancelOrder, fetchOrders } from '../api/canteen'
+import { cancelOrder as cancelOrderApi, fetchOrders } from '../api/canteen'
 
 const props = defineProps({
   reloadKey: {
@@ -90,6 +98,22 @@ const currentStudent = ref(localStorage.getItem(STUDENT_KEY) || '')
 const studentNoInput = ref(currentStudent.value)
 const orders = ref([])
 const loading = ref(false)
+const successMessage = ref('')
+const errorMessage = ref('')
+
+let messageTimer = null
+function showSuccess(msg) {
+  successMessage.value = msg
+  errorMessage.value = ''
+  if (messageTimer) clearTimeout(messageTimer)
+  messageTimer = setTimeout(() => { successMessage.value = '' }, 3000)
+}
+function showError(msg) {
+  errorMessage.value = msg
+  successMessage.value = ''
+  if (messageTimer) clearTimeout(messageTimer)
+  messageTimer = setTimeout(() => { errorMessage.value = '' }, 4000)
+}
 
 const STATUS_LABELS = {
   pending: '待确认',
@@ -124,7 +148,7 @@ async function loadMyOrders() {
   try {
     orders.value = await fetchOrders({ student_no: studentNo, ordering: '-created_at' })
   } catch (error) {
-    alert(`加载订单失败：${error.message}`)
+    showError(`加载订单失败：${error.message}`)
   } finally {
     loading.value = false
   }
@@ -141,13 +165,14 @@ async function cancelOrder(order) {
   if (!confirm(`确定要取消订单 #${order.id} 吗？菜品库存将自动恢复。`)) return
   order.cancelling = true
   try {
-    await cancelOrder(order.id, { operator_student_no: currentStudent.value })
+    await cancelOrderApi(order.id, { operator_student_no: currentStudent.value })
     order.status = 'cancelled'
     order.can_cancel = false
     order.cancel_reason = '订单已取消'
+    showSuccess(`订单 #${order.id} 已成功取消，库存已恢复`)
     emit('orderCancelled', order)
   } catch (error) {
-    alert(`取消失败：${error.message}`)
+    showError(`取消失败：${error.message}`)
   } finally {
     order.cancelling = false
   }
@@ -330,5 +355,37 @@ watch(() => props.reloadKey, () => {
 .cancel-hint {
   color: #999;
   font-size: 12px;
+}
+
+.toast {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  animation: toastIn 0.3s ease-out;
+}
+
+.toast-success {
+  background: #f6ffed;
+  color: #389e0d;
+  border: 1px solid #b7eb8f;
+}
+
+.toast-error {
+  background: #fff1f0;
+  color: #cf1322;
+  border: 1px solid #ffa39e;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
