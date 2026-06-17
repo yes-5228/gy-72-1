@@ -120,6 +120,9 @@ async function submitOrder() {
       items: props.cart.map((item) => ({ dish: item.dish.id, quantity: item.quantity })),
     }
     const order = await createOrder(payload)
+    if (order.cancel_token) {
+      localStorage.setItem(`canteen_cancel_token_${order.id}`, order.cancel_token)
+    }
     message.value = `订单 #${order.id} 已提交，金额 ￥${order.total_amount}`
     emit('created', order)
   } catch (error) {

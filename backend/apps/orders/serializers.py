@@ -89,6 +89,12 @@ class OrderSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 
+class OrderCreateSerializer(OrderSerializer):
+    class Meta(OrderSerializer.Meta):
+        fields = OrderSerializer.Meta.fields + ["cancel_token"]
+        read_only_fields = OrderSerializer.Meta.read_only_fields + ["cancel_token"]
+
+
 class OrderCancelSerializer(serializers.Serializer):
     def validate(self, attrs):
         order = self.context["order"]

@@ -163,12 +163,21 @@ function switchStudent() {
 
 async function cancelOrder(order) {
   if (!confirm(`确定要取消订单 #${order.id} 吗？菜品库存将自动恢复。`)) return
+  const token = localStorage.getItem(`canteen_cancel_token_${order.id}`)
+  if (!token) {
+    showError('无法取消：未找到该订单的操作令牌，请确保在提交订单的设备上操作')
+    return
+  }
   order.cancelling = true
   try {
-    await cancelOrderApi(order.id, { operator_student_no: currentStudent.value })
+    await cancelOrderApi(order.id, {
+      operator_student_no: currentStudent.value,
+      cancel_token: token,
+    })
     order.status = 'cancelled'
     order.can_cancel = false
     order.cancel_reason = '订单已取消'
+    localStorage.removeItem(`canteen_cancel_token_${order.id}`)
     showSuccess(`订单 #${order.id} 已成功取消，库存已恢复`)
     emit('orderCancelled', order)
   } catch (error) {

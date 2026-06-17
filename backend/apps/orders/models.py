@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models, transaction
 
 from apps.menu.models import Dish
@@ -23,6 +25,7 @@ class Order(models.Model):
     note = models.CharField("备注", max_length=200, blank=True)
     status = models.CharField("状态", max_length=20, choices=STATUS_CHOICES, default="pending")
     total_amount = models.DecimalField("总金额", max_digits=9, decimal_places=2, default=0)
+    cancel_token = models.UUIDField("取消令牌", default=uuid.uuid4, editable=False, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

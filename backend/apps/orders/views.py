@@ -4,7 +4,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
 from .models import Order
-from .serializers import OrderCancelSerializer, OrderSerializer
+from .serializers import OrderCancelSerializer, OrderCreateSerializer, OrderSerializer
 
 
 class OrderViewSet(viewsets.ModelViewSet):
@@ -13,6 +13,11 @@ class OrderViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["student_name", "student_no", "phone", "delivery_address"]
     ordering_fields = ["created_at", "pickup_time", "total_amount"]
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return OrderCreateSerializer
+        return super().get_serializer_class()
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -27,10 +32,14 @@ class OrderViewSet(viewsets.ModelViewSet):
     @staticmethod
     def _check_cancel_permission(request, order):
         user = request.user
-        if user and (user.is_staff or user.is_superuser):
+        if user and user.is_authenticated and (user.is_staff or user.is_superuser):
             return True
         operator_student_no = request.data.get("operator_student_no") or request.query_params.get("operator_student_no")
-        if operator_student_no and operator_student_no.strip() == order.student_no.strip():
+        cancel_token = request.data.get("cancel_token") or request.query_params.get("cancel_token")
+        if (operator_student_no
+                and str(operator_student_no).strip() == str(order.student_no).strip()
+                and cancel_token
+                and str(cancel_token).strip() == str(order.cancel_token)):
             return True
         return False
 
